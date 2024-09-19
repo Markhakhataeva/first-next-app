@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.sidebar{
+    padding: 0 24px 0 24px;
+    cursor: pointer;
+    color: #64748b;
+    &:hover{
+        background-color: white;
+        border-radius: 30px;
+        color: #336dff;
+    }
+}
+
+.active{
+    padding: 0 24px 0 24px;
+    background-color: white;
+    border-radius: 30px;
+    color: #336dff;
+}
