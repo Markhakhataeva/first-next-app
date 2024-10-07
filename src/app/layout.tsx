@@ -4,6 +4,7 @@ import { ClientProvider } from '@/core/providers/ClientProvider'
 import type { Metadata } from 'next'
 
 import '../styles/globals.scss'
+import '@mantine/core/styles.css'
 
 export const metadata: Metadata = {
     title: 'Lincode skills',

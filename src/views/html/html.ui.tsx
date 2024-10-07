@@ -1,24 +1,81 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 
 import { PageLayout } from '@/core/layouts/PageLayout/PageLayout'
-import { Button, Flex, Group, Stack, Text } from '@mantine/core'
+import { htmlQueries } from '@/entities/html'
+import {
+    Button,
+    Flex,
+    Group,
+    Loader,
+    Notification,
+    Stack,
+    Text,
+} from '@mantine/core'
 
 export function HtmlViews() {
+    const [currentQuestionIndex, setCurrentQuestionIndex] = React.useState(0)
     const [selectedAnswer, setSelectedAnswer] = React.useState<null | string>(
         null
     )
-    const [isAnswered, setIsAnswered] = React.useState<boolean>(false)
+    const [isAnswered, setIsAnswered] = React.useState(false)
+    const [isCorrect, setIsCorrect] = React.useState<boolean | null>(null)
+    const [serverMessage, setServerMessage] = useState<string>('')
+    const [question, setQuestion] = useState('')
+    const [timer, setTimer] = React.useState<number>(30)
 
-    const question = 'Какой тег используется для ссылки?'
-    const options = ['<a>', '<p>', '<div>', '<span>']
-    const correctAnswer = '<a>'
+    const { data: questions } = htmlQueries.useGetQuestionsQuery()
+    const { mutateAsync: checkAnswer } = htmlQueries.useCheckAnswerMutation()
 
-    const handleAnswerClick = (option: string) => {
+    useEffect(() => {
+        if (timer > 0 && !isAnswered) {
+            const countdown = setTimeout(() => setTimer(timer - 1), 1000)
+            return () => clearTimeout(countdown)
+        } else if (timer === 0 && !isAnswered) {
+            setIsAnswered(true)
+            setServerMessage('Время вышло!')
+        }
+    }, [timer, isAnswered])
+
+    if (!questions) return <Loader />
+
+    const handleAnswerClick = (option: string, question: string) => {
         setSelectedAnswer(option)
-        setIsAnswered(true)
+        setQuestion(question)
     }
+
+    const handleSubmit = async () => {
+        if (!selectedAnswer || !questions) return
+
+        try {
+            await checkAnswer({
+                question: question,
+                selectedAnswer: selectedAnswer,
+            }).then(x => {
+                setIsCorrect(x.data.isCorrect)
+                setServerMessage(x.data.message)
+                setIsAnswered(true)
+            })
+        } catch (error) {
+            console.error('Error', error)
+        }
+    }
+
+    const handleNextQuestion = () => {
+        setIsAnswered(false)
+        setSelectedAnswer(null)
+        setIsCorrect(null)
+        setServerMessage('')
+        setTimer(30)
+        if (currentQuestionIndex < questions.data.length - 1) {
+            setCurrentQuestionIndex(currentQuestionIndex + 1)
+        } else {
+            alert('Вы прошли все запросы')
+        }
+    }
+
+    const currentQuestion = questions.data[currentQuestionIndex]
 
     return (
         <PageLayout pageTitle='HTML теория'>
@@ -27,27 +84,27 @@ export function HtmlViews() {
                     <Flex justify='space-between' w='60%'>
                         <Flex justify='center'>
                             <Text size='xl' fw={600}>
-                                {question}
+                                {currentQuestion.question}
                             </Text>
                         </Flex>
                         <Flex>
-                            <Text>Timer</Text>
+                            <Text>Оставшееся время: {timer} секунд</Text>
                         </Flex>
                     </Flex>
                 </Flex>
 
                 <Stack gap='md'>
-                    {options.map((option, i) => (
+                    {currentQuestion.options.map((option, index) => (
                         <Button
-                            key={i}
-                            onClick={() => handleAnswerClick(option)}
+                            key={index}
+                            onClick={() =>
+                                handleAnswerClick(
+                                    option,
+                                    currentQuestion.question
+                                )
+                            }
                             variant={
                                 selectedAnswer === option ? 'filled' : 'outline'
-                            }
-                            color={
-                                isAnswered && option === correctAnswer
-                                    ? 'green'
-                                    : 'blue'
                             }
                             disabled={isAnswered}
                         >
@@ -56,22 +113,52 @@ export function HtmlViews() {
                     ))}
                 </Stack>
 
-                {isAnswered && (
-                    <Group justify='center' mt='md'>
-                        <Text
-                            size='lg'
-                            c={
-                                selectedAnswer === correctAnswer
-                                    ? 'green'
-                                    : 'red'
-                            }
+                <Group justify='center' mt='md'>
+                    {!isAnswered && (
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={!selectedAnswer}
                         >
-                            {selectedAnswer === correctAnswer
-                                ? 'Правильный ответ'
-                                : 'Неправильный ответ'}
-                        </Text>
-                    </Group>
-                )}
+                            Отправить
+                        </Button>
+                    )}
+                    {isAnswered && (
+                        <>
+                            {isCorrect ? (
+                                <>
+                                    <Notification
+                                        color='green'
+                                        onClose={() => {}}
+                                    >
+                                        {serverMessage}
+                                    </Notification>
+                                    <Button onClick={handleNextQuestion}>
+                                        Next Question!
+                                    </Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Notification
+                                        color='red'
+                                        onClose={() => {}}
+                                    >
+                                        {serverMessage}
+                                    </Notification>
+                                    <Button
+                                        onClick={() => {
+                                            setIsAnswered(false)
+                                            setSelectedAnswer(null)
+                                            setIsCorrect(null)
+                                            setTimer(30)
+                                        }}
+                                    >
+                                        again!
+                                    </Button>
+                                </>
+                            )}
+                        </>
+                    )}
+                </Group>
             </Flex>
         </PageLayout>
     )

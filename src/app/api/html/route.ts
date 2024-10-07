@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({
             message: isCorrect ? 'Правильно' : 'Неправильно',
-            correctAnswer: foundQuestion.correctAnswer,
             isCorrect: isCorrect,
         })
     } catch (error: any) {
